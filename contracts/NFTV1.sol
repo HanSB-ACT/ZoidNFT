@@ -26,13 +26,13 @@ contract NFTV1 is
     address private constant ERC20_CONTRACT_ADDRESS =
         0x145e892dEB69fDF39924595ec6635868c5a0fa51;
 
-    Counters.Counter public lastTokenId;
+    Counters.Counter private lastTokenId;
     string private baseURI;
 
     struct CardInfo {
         uint256 cardIndex;
     }
-    mapping(uint256 => CardInfo) public cardInfos;
+    mapping(uint256 => CardInfo) private cardInfos;
 
     event evtNFTCreated(address _owner, uint256 _tokenId);
 
