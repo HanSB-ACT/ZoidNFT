@@ -27,6 +27,7 @@ contract NFTV1 is
         0x145e892dEB69fDF39924595ec6635868c5a0fa51;
 
     Counters.Counter public lastTokenId;
+    string private baseURI;
 
     struct CardInfo {
         uint256 cardIndex;
@@ -39,15 +40,20 @@ contract NFTV1 is
         public
         ERC721(_name, _symbol)
     {
+        setBaseURI("https://webqa.zoidsnft.io/api/meta/");
         supportsInterface(_INTERFACE_ID_ERC2981);
     }
 
-    function contractURI() public pure returns (string memory) {
-        return "https://webqa.zoidsnft.io/api/meta/contract-meta";
+    function contractURI() public view returns (string memory) {
+        return string(abi.encodePacked(_baseURI(), "contract-meta"));
     }
 
-    function _baseURI() internal pure override returns (string memory) {
-        return "https://webqa.zoidsnft.io/api/meta/";
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
+    function setBaseURI(string memory _uri) public onlyOwner {
+        baseURI = _uri;
     }
 
     function getLastTokenId() public view returns (uint256) {
