@@ -40,7 +40,7 @@ contract NFTV1 is
         public
         ERC721(_name, _symbol)
     {
-        setBaseURI("https://webqa.zoidsnft.io/api/meta/");
+        setBaseURI("https://meta.zoidsnft.io/api/meta/");
         supportsInterface(_INTERFACE_ID_ERC2981);
     }
 
