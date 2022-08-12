@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-contract NFTV1 is
+contract ZoidsNFT is
     ERC721Enumerable,
     ERC721Burnable,
     ERC721Pausable,
@@ -21,13 +21,12 @@ contract NFTV1 is
     using Counters for Counters.Counter;
     using SafeCast for uint256;
 
-    string public VER = "1.0";
-    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
-    address private constant ERC20_CONTRACT_ADDRESS =
-        0x145e892dEB69fDF39924595ec6635868c5a0fa51;
+    string public VER;
+    bytes4 public constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-    Counters.Counter private lastTokenId;
-    string private baseURI;
+    Counters.Counter public lastTokenId;
+    string public baseURI;
+    address public erc20ContractAddress;
 
     struct CardInfo {
         uint256 cardIndex;
@@ -36,12 +35,24 @@ contract NFTV1 is
 
     event evtNFTCreated(address _owner, uint256 _tokenId);
 
-    constructor(string memory _name, string memory _symbol)
-        public
-        ERC721(_name, _symbol)
-    {
-        setBaseURI("https://meta.zoidsnft.io/api/meta/");
+    constructor(
+        string memory _ver,
+        string memory _name,
+        string memory _symbol,
+        string memory _uri,
+        address _erc20
+    ) public ERC721(_name, _symbol) {
+        VER = _ver;
+        setBaseURI(_uri);
+        setERC20ContractAddress(_erc20);
         supportsInterface(_INTERFACE_ID_ERC2981);
+    }
+
+    function setERC20ContractAddress(address _contractAddress)
+        public
+        onlyOwner
+    {
+        erc20ContractAddress = _contractAddress;
     }
 
     function contractURI() public view returns (string memory) {
@@ -93,6 +104,7 @@ contract NFTV1 is
 
         uint256 _tokenId = lastTokenId.current();
         _safeMint(_toAddress, _tokenId);
+
         setRoyaltyInfo(_tokenId, owner(), _royalty);
 
         cardInfos[_tokenId] = CardInfo(_cardIndex);
@@ -135,29 +147,44 @@ contract NFTV1 is
     }
 
     function market(
-        uint256 _tokenId,
         address _buyer,
-        uint256 _amount
+        uint256 _tokenId,
+        uint256 _coinAmount
     ) public {
         address royaltyReciever;
         uint256 royaltyAmount;
-        (royaltyReciever, royaltyAmount) = royaltyInfo(_tokenId, _amount);
-        uint256 tokenOwnerAmount = _amount - royaltyAmount;
+        (royaltyReciever, royaltyAmount) = royaltyInfo(_tokenId, _coinAmount);
+        uint256 tokenOwnerAmount = _coinAmount - royaltyAmount;
 
         address tokenOwner = ownerOf(_tokenId);
-        ERC20(ERC20_CONTRACT_ADDRESS).transferFrom(
+        ERC20(erc20ContractAddress).transferFrom(
             _buyer,
             tokenOwner,
             tokenOwnerAmount
         );
 
-        ERC20(ERC20_CONTRACT_ADDRESS).transferFrom(
+        ERC20(erc20ContractAddress).transferFrom(
             _buyer,
             royaltyReciever,
             royaltyAmount
         );
 
         safeTransferFrom(tokenOwner, _buyer, _tokenId);
+    }
+
+    function marketMulti(
+        address _buyer,
+        uint256[] memory _tokenId,
+        uint256[] memory _coinAmount
+    ) public {
+        require(
+            _tokenId.length == _coinAmount.length,
+            "marketMulti: values length mismatch"
+        );
+
+        for (uint256 i = 0; i < _tokenId.length; i++) {
+            market(_buyer, _tokenId[i], _coinAmount[i]);
+        }
     }
 
     function pause() public virtual onlyOwner {
