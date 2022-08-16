@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "./ERC721Enumerable.sol";
 import "./ERC2981.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -25,13 +24,9 @@ contract ZoidsNFT is
     bytes4 public constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
     Counters.Counter public lastTokenId;
+    Counters.Counter public totalTokenCount;
     string public baseURI;
     address public erc20ContractAddress;
-
-    struct CardInfo {
-        uint256 cardIndex;
-    }
-    mapping(uint256 => CardInfo) private cardInfos;
 
     event evtNFTCreated(address _owner, uint256 _tokenId);
 
@@ -67,12 +62,12 @@ contract ZoidsNFT is
         baseURI = _uri;
     }
 
-    function getLastTokenId() public view returns (uint256) {
-        return lastTokenId.current();
+    function totalSupply() public view returns (uint256) {
+        return totalTokenCount.current();
     }
 
-    function getCardIndex(uint256 _tokenId) public view returns (uint256) {
-        return cardInfos[_tokenId].cardIndex;
+    function getLastTokenId() public view returns (uint256) {
+        return lastTokenId.current();
     }
 
     function tokensOfOwner(
@@ -95,54 +90,41 @@ contract ZoidsNFT is
         return tokenIds;
     }
 
-    function _createCard(
-        address _toAddress,
-        uint256 _cardIndex,
-        uint96 _royalty
-    ) private {
+    function _createCard(address _toAddress, uint96 _royalty) private {
         lastTokenId.increment();
+        totalTokenCount.increment();
 
         uint256 _tokenId = lastTokenId.current();
         _safeMint(_toAddress, _tokenId);
 
         setRoyaltyInfo(_tokenId, owner(), _royalty);
 
-        cardInfos[_tokenId] = CardInfo(_cardIndex);
-
         emit evtNFTCreated(_toAddress, _tokenId);
     }
 
-    function createCard(
-        address _toAddress,
-        uint256 _cardIndex,
-        uint96 _royalty
-    ) public onlyOwner {
-        _createCard(_toAddress, _cardIndex, _royalty);
+    function createCard(address _toAddress, uint96 _royalty) public onlyOwner {
+        _createCard(_toAddress, _royalty);
     }
 
     function createCardWithBurn(
         address _toAddress,
-        uint256 _cardIndex,
         uint256[] memory _burnTokenId,
         uint96 _royalty
     ) public onlyOwner {
         for (uint256 i = 0; i < _burnTokenId.length; i++) {
-            _burn(_burnTokenId[i]);
+            burnCard(_burnTokenId[i]);
         }
 
-        _createCard(_toAddress, _cardIndex, _royalty);
+        _createCard(_toAddress, _royalty);
     }
 
     function unpack(
         address _toAddress,
-        uint256[] memory _cardIndex,
         uint256 _amount,
         uint96 _royalty
     ) public {
-        require(_cardIndex.length == _amount, "unpack: values length mismatch");
-
         for (uint256 i = 0; i < _amount; i++) {
-            _createCard(_toAddress, _cardIndex[i], _royalty);
+            _createCard(_toAddress, _royalty);
         }
     }
 
@@ -185,6 +167,11 @@ contract ZoidsNFT is
         for (uint256 i = 0; i < _tokenId.length; i++) {
             market(_buyer, _tokenId[i], _coinAmount[i]);
         }
+    }
+
+    function burnCard(uint256 _tokenId) private {
+        totalTokenCount.decrement();
+        _burn(_tokenId);
     }
 
     function pause() public virtual onlyOwner {
