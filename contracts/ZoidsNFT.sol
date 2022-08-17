@@ -25,10 +25,10 @@ contract ZoidsNFT is
 
     Counters.Counter public lastTokenId;
     Counters.Counter public totalTokenCount;
-    string public baseURI;
-    address public erc20ContractAddress;
+    string public baseTokenURI;
+    address public coinContractAddress;
 
-    event evtNFTCreated(address _owner, uint256 _tokenId);
+    event evtNFTCreated(address _toAddress, uint256 _tokenId);
 
     constructor(
         string memory _ver,
@@ -39,15 +39,12 @@ contract ZoidsNFT is
     ) public ERC721(_name, _symbol) {
         VER = _ver;
         setBaseURI(_uri);
-        setERC20ContractAddress(_erc20);
+        setCoinContractAddress(_erc20);
         supportsInterface(_INTERFACE_ID_ERC2981);
     }
 
-    function setERC20ContractAddress(address _contractAddress)
-        public
-        onlyOwner
-    {
-        erc20ContractAddress = _contractAddress;
+    function setCoinContractAddress(address _contractAddress) public onlyOwner {
+        coinContractAddress = _contractAddress;
     }
 
     function contractURI() public view returns (string memory) {
@@ -55,11 +52,11 @@ contract ZoidsNFT is
     }
 
     function _baseURI() internal view override returns (string memory) {
-        return baseURI;
+        return baseTokenURI;
     }
 
     function setBaseURI(string memory _uri) public onlyOwner {
-        baseURI = _uri;
+        baseTokenURI = _uri;
     }
 
     function totalSupply() public view returns (uint256) {
@@ -108,10 +105,10 @@ contract ZoidsNFT is
 
     function createCardWithBurn(
         address _toAddress,
-        uint256[] memory _burnTokenId,
+        uint256[] memory _burnTokenIds,
         uint96 _royalty
     ) public onlyOwner {
-        _burnCards(_burnTokenId);
+        _burnCards(_burnTokenIds);
         _createCard(_toAddress, _royalty);
     }
 
@@ -130,10 +127,10 @@ contract ZoidsNFT is
         super.burn(_tokenId);
     }
 
-    function _burnCards(uint256[] memory _tokenIds) private {
-        for (uint256 i = 0; i < _tokenIds.length; i++) {
+    function _burnCards(uint256[] memory _burnTokenIds) private {
+        for (uint256 i = 0; i < _burnTokenIds.length; i++) {
             totalTokenCount.decrement();
-            _burn(_tokenIds[i]);
+            _burn(_burnTokenIds[i]);
         }
     }
 
@@ -145,19 +142,18 @@ contract ZoidsNFT is
         address royaltyReciever;
         uint256 royaltyAmount;
         (royaltyReciever, royaltyAmount) = royaltyInfo(_tokenId, _coinAmount);
-        uint256 tokenOwnerAmount = _coinAmount - royaltyAmount;
-
-        address tokenOwner = ownerOf(_tokenId);
-        ERC20(erc20ContractAddress).transferFrom(
-            _buyer,
-            tokenOwner,
-            tokenOwnerAmount
-        );
-
-        ERC20(erc20ContractAddress).transferFrom(
+        ERC20(coinContractAddress).transferFrom(
             _buyer,
             royaltyReciever,
             royaltyAmount
+        );
+
+        address tokenOwner = ownerOf(_tokenId);
+        uint256 tokenOwnerAmount = _coinAmount - royaltyAmount;
+        ERC20(coinContractAddress).transferFrom(
+            _buyer,
+            tokenOwner,
+            tokenOwnerAmount
         );
 
         safeTransferFrom(tokenOwner, _buyer, _tokenId);
@@ -187,16 +183,16 @@ contract ZoidsNFT is
     }
 
     function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
+        address _fromAddress,
+        address _toAddress,
+        uint256 _tokenId
     )
         internal
         virtual
         override(ERC721, ERC721Enumerable, ERC721Pausable)
         whenNotPaused
     {
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(_fromAddress, _toAddress, _tokenId);
     }
 
     function setRoyaltyInfo(
