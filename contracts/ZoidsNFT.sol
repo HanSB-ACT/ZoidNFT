@@ -111,7 +111,7 @@ contract ZoidsNFT is
         uint256[] memory _burnTokenId,
         uint96 _royalty
     ) public onlyOwner {
-        burnCards(_burnTokenId);
+        _burnCards(_burnTokenId);
         _createCard(_toAddress, _royalty);
     }
 
@@ -122,6 +122,18 @@ contract ZoidsNFT is
     ) public {
         for (uint256 i = 0; i < _amount; i++) {
             _createCard(_toAddress, _royalty);
+        }
+    }
+
+    function burn(uint256 _tokenId) public override {
+        totalTokenCount.decrement();
+        super.burn(_tokenId);
+    }
+
+    function _burnCards(uint256[] memory _tokenIds) private {
+        for (uint256 i = 0; i < _tokenIds.length; i++) {
+            totalTokenCount.decrement();
+            _burn(_tokenIds[i]);
         }
     }
 
@@ -164,18 +176,6 @@ contract ZoidsNFT is
         for (uint256 i = 0; i < _tokenId.length; i++) {
             market(_buyer, _tokenId[i], _coinAmount[i]);
         }
-    }
-
-    function burnCards(uint256[] memory _tokenIds) private {
-        for (uint256 i = 0; i < _tokenIds.length; i++) {
-            totalTokenCount.decrement();
-            _burn(_tokenIds[i]);
-        }
-    }
-
-    function burn(uint256 _tokenId) public override {
-        totalTokenCount.decrement();
-        super.burn(_tokenId);
     }
 
     function pause() public virtual onlyOwner {
