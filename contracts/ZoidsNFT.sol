@@ -35,16 +35,16 @@ contract ZoidsNFT is
         string memory _name,
         string memory _symbol,
         string memory _uri,
-        address _erc20
+        address _coin
     ) public ERC721(_name, _symbol) {
         VER = _ver;
         setBaseURI(_uri);
-        setCoinContractAddress(_erc20);
+        setCoinContractAddress(_coin);
         supportsInterface(_INTERFACE_ID_ERC2981);
     }
 
-    function setCoinContractAddress(address _contractAddress) public onlyOwner {
-        coinContractAddress = _contractAddress;
+    function setCoinContractAddress(address _coin) public onlyOwner {
+        coinContractAddress = _coin;
     }
 
     function contractURI() public view returns (string memory) {
