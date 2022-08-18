@@ -20,9 +20,9 @@ contract ZoidsNFT is
     using SafeCast for uint256;
 
     string public VER = "1.0";
-    string public baseTokenURI;
-    address public coinContractAddress;
-    address public coinWalletAddress;
+    string private baseTokenURI;
+    address private coinContractAddress;
+    address private coinWalletAddress;
     Counters.Counter private totalTokenCount;
 
     event eventCreateCard(address _toAddress, uint256 _tokenId);
