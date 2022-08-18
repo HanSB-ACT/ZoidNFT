@@ -2,17 +2,16 @@
 pragma solidity ^0.8.0;
 
 import "./ERC721Enumerable.sol";
-import "./ERC2981.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract ZoidsNFT is
+    ERC721,
     ERC721Enumerable,
-    ERC721Burnable,
     ERC721Pausable,
     ERC2981,
     Ownable
@@ -20,31 +19,23 @@ contract ZoidsNFT is
     using Counters for Counters.Counter;
     using SafeCast for uint256;
 
-    string public VER;
-    bytes4 public constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
-
-    Counters.Counter public lastTokenId;
-    Counters.Counter public totalTokenCount;
+    string public VER = "1.0";
     string public baseTokenURI;
     address public coinContractAddress;
+    address public coinWalletAddress;
+    Counters.Counter private totalTokenCount;
 
-    event evtNFTCreated(address _toAddress, uint256 _tokenId);
+    event eventCreateCard(address _toAddress, uint256 _tokenId);
 
     constructor(
-        string memory _ver,
         string memory _name,
         string memory _symbol,
         string memory _uri,
-        address _coin
+        address _coinContractAddress,
+        address _coinWalletAddress
     ) public ERC721(_name, _symbol) {
-        VER = _ver;
         setBaseURI(_uri);
-        setCoinContractAddress(_coin);
-        supportsInterface(_INTERFACE_ID_ERC2981);
-    }
-
-    function setCoinContractAddress(address _coin) public onlyOwner {
-        coinContractAddress = _coin;
+        setCoinInfo(_coinContractAddress, _coinWalletAddress);
     }
 
     function contractURI() public view returns (string memory) {
@@ -59,12 +50,13 @@ contract ZoidsNFT is
         baseTokenURI = _uri;
     }
 
-    function totalSupply() public view returns (uint256) {
-        return totalTokenCount.current();
+    function setCoinInfo(address _contract, address _wallet) public onlyOwner {
+        coinContractAddress = _contract;
+        coinWalletAddress = _wallet;
     }
 
-    function getLastTokenId() public view returns (uint256) {
-        return lastTokenId.current();
+    function totalSupply() public view returns (uint256) {
+        return totalTokenCount.current();
     }
 
     function tokensOfOwner(
@@ -87,47 +79,49 @@ contract ZoidsNFT is
         return tokenIds;
     }
 
-    function _createCard(address _toAddress, uint96 _royalty) private {
-        lastTokenId.increment();
+    function _createCard(
+        address _toAddress,
+        uint256 _tokenId,
+        uint96 _royalty
+    ) private {
         totalTokenCount.increment();
 
-        uint256 _tokenId = lastTokenId.current();
         _safeMint(_toAddress, _tokenId);
+        setRoyaltyInfo(_tokenId, coinWalletAddress, _royalty);
 
-        setRoyaltyInfo(_tokenId, owner(), _royalty);
-
-        emit evtNFTCreated(_toAddress, _tokenId);
+        emit eventCreateCard(_toAddress, _tokenId);
     }
 
-    function createCard(address _toAddress, uint96 _royalty) public onlyOwner {
-        _createCard(_toAddress, _royalty);
+    function createCard(
+        address _toAddress,
+        uint256 _tokenId,
+        uint96 _royalty
+    ) public onlyOwner {
+        _createCard(_toAddress, _tokenId, _royalty);
     }
 
     function createCardWithBurn(
         address _toAddress,
+        uint256 _tokenId,
         uint256[] memory _burnTokenIds,
         uint96 _royalty
     ) public onlyOwner {
-        _burnCards(_burnTokenIds);
-        _createCard(_toAddress, _royalty);
+        burnCards(_burnTokenIds);
+        _createCard(_toAddress, _tokenId, _royalty);
     }
 
     function unpack(
         address _toAddress,
+        uint256 _startTokenId,
         uint256 _amount,
         uint96 _royalty
     ) public {
         for (uint256 i = 0; i < _amount; i++) {
-            _createCard(_toAddress, _royalty);
+            _createCard(_toAddress, _startTokenId + i, _royalty);
         }
     }
 
-    function burn(uint256 _tokenId) public override {
-        totalTokenCount.decrement();
-        super.burn(_tokenId);
-    }
-
-    function _burnCards(uint256[] memory _burnTokenIds) private {
+    function burnCards(uint256[] memory _burnTokenIds) public onlyOwner {
         for (uint256 i = 0; i < _burnTokenIds.length; i++) {
             totalTokenCount.decrement();
             _burn(_burnTokenIds[i]);
@@ -161,16 +155,16 @@ contract ZoidsNFT is
 
     function marketMulti(
         address _buyer,
-        uint256[] memory _tokenId,
-        uint256[] memory _coinAmount
+        uint256[] memory _tokenIds,
+        uint256[] memory _coinAmounts
     ) public {
         require(
-            _tokenId.length == _coinAmount.length,
+            _tokenIds.length == _coinAmounts.length,
             "marketMulti: values length mismatch"
         );
 
-        for (uint256 i = 0; i < _tokenId.length; i++) {
-            market(_buyer, _tokenId[i], _coinAmount[i]);
+        for (uint256 i = 0; i < _tokenIds.length; i++) {
+            market(_buyer, _tokenIds[i], _coinAmounts[i]);
         }
     }
 
@@ -203,25 +197,13 @@ contract ZoidsNFT is
         _setTokenRoyalty(_tokenId, _receiver, _royalty);
     }
 
-    function checkRoyalties(address _contractAddress)
-        public
-        view
-        returns (bool)
-    {
-        bool _success = IERC165(_contractAddress).supportsInterface(
-            _INTERFACE_ID_ERC2981
-        );
-        return _success;
-    }
-
     function supportsInterface(bytes4 _interfaceId)
         public
         view
         virtual
-        override(IERC165, ERC721, ERC721Enumerable)
+        override(ERC721, ERC721Enumerable, ERC2981)
         returns (bool)
     {
-        return (_interfaceId == type(IERC2981).interfaceId ||
-            super.supportsInterface(_interfaceId));
+        return super.supportsInterface(_interfaceId);
     }
 }
