@@ -132,7 +132,7 @@ contract ZoidsNFT is
         address _buyer,
         uint256 _tokenId,
         uint256 _coinAmount
-    ) public {
+    ) public onlyOwner {
         address royaltyReciever;
         uint256 royaltyAmount;
         (royaltyReciever, royaltyAmount) = royaltyInfo(_tokenId, _coinAmount);
@@ -157,7 +157,7 @@ contract ZoidsNFT is
         address _buyer,
         uint256[] memory _tokenIds,
         uint256[] memory _coinAmounts
-    ) public {
+    ) public onlyOwner {
         require(
             _tokenIds.length == _coinAmounts.length,
             "marketMulti: values length mismatch"
