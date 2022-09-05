@@ -2,10 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./ERC721Enumerable.sol";
+import "./Ownable.sol";
+import "./TimeLock.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -14,7 +16,9 @@ contract ZoidsNFT is
     ERC721Enumerable,
     ERC721Pausable,
     ERC2981,
-    Ownable
+    ReentrancyGuard,
+    Ownable,
+    TimeLock
 {
     using Counters for Counters.Counter;
     using SafeCast for uint256;
@@ -51,6 +55,11 @@ contract ZoidsNFT is
     }
 
     function setCoinInfo(address _contract, address _wallet) public onlyOwner {
+        require(
+            _contract != address(0) && _wallet != address(0),
+            "setCoinInfo: invalid address"
+        );
+
         coinContractAddress = _contract;
         coinWalletAddress = _wallet;
     }
@@ -83,7 +92,7 @@ contract ZoidsNFT is
         address _toAddress,
         uint256 _tokenId,
         uint96 _royalty
-    ) private {
+    ) private nonReentrant {
         totalTokenCount.increment();
 
         _safeMint(_toAddress, _tokenId);
@@ -185,6 +194,7 @@ contract ZoidsNFT is
         virtual
         override(ERC721, ERC721Enumerable, ERC721Pausable)
         whenNotPaused
+        notLocked
     {
         super._beforeTokenTransfer(_fromAddress, _toAddress, _tokenId);
     }
