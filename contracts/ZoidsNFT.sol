@@ -96,7 +96,7 @@ contract ZoidsNFT is
         totalTokenCount.increment();
 
         _safeMint(_toAddress, _tokenId);
-        setRoyaltyInfo(_tokenId, coinWalletAddress, _royalty);
+        _setRoyaltyInfo(_tokenId, coinWalletAddress, _royalty);
 
         emit eventCreateCard(_toAddress, _tokenId);
     }
@@ -199,11 +199,11 @@ contract ZoidsNFT is
         super._beforeTokenTransfer(_fromAddress, _toAddress, _tokenId);
     }
 
-    function setRoyaltyInfo(
+    function _setRoyaltyInfo(
         uint256 _tokenId,
         address _receiver,
         uint96 _royalty
-    ) public onlyOwner {
+    ) private {
         _setTokenRoyalty(_tokenId, _receiver, _royalty);
     }
 
