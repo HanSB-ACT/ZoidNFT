@@ -124,7 +124,7 @@ contract ZoidsNFT is
         uint256 _startTokenId,
         uint256 _amount,
         uint96 _royalty
-    ) public {
+    ) public onlyOwner {
         for (uint256 i = 0; i < _amount; i++) {
             _createCard(_toAddress, _startTokenId + i, _royalty);
         }
